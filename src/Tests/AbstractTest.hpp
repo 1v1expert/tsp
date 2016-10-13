@@ -7,44 +7,44 @@
 
 namespace tsp_tests
 {
-    using std::string;
-    using std::vector;
-    using std::tuple;
-    using std::cerr;
-    
-    using std::make_tuple;
-    using std::get;
+	using std::string;
+	using std::vector;
+	using std::tuple;
+	using std::cerr;
 
-    struct AbstractTest
-    {
-        static void AssertThat(bool result, string represenatation);
-        static bool HadPassed(bool print_errors = false);
+	using std::make_tuple;
+	using std::get;
 
-    private:
-        static vector<tuple<bool, string>> results_;
-    };
+	struct AbstractTest
+	{
+		static void AssertThat(bool result, string represenatation = "");
+		static bool HadPassed(bool print_errors = true);
 
-    vector<tuple<bool, string>> AbstractTest::results_;
+	private:
+		static vector<tuple<bool, string>> results_;
+	};
 
-    inline void AbstractTest::AssertThat(bool result, string represenatation = "")
-    {
-        results_.emplace_back(make_tuple(result, represenatation));
-    }
+	vector<tuple<bool, string>> AbstractTest::results_;
 
-    inline bool AbstractTest::HadPassed(bool print_errors)
-    {
-        auto final_result = true;
-        for (const auto& result: results_)
-            if (!get<0>(result))
-            {
-                final_result = false;
-                if (print_errors)
-                    cerr << "Error in test: "
-                         << get<1>(result)
-                         << '\n';
-            }
+	inline void AbstractTest::AssertThat(bool result, string represenatation)
+	{
+		results_.emplace_back(make_tuple(result, represenatation));
+	}
 
-        results_.clear();
-        return final_result;
-    }
+	inline bool AbstractTest::HadPassed(bool print_errors)
+	{
+		auto final_result = true;
+		for (const auto& result : results_)
+			if (!get<0>(result))
+			{
+				final_result = false;
+				if (print_errors)
+					cerr << "Error in test: "
+						 << get<1>(result)
+						 << '\n';
+			}
+
+		results_.clear();
+		return final_result;
+	}
 }

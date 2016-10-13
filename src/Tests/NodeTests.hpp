@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <sstream>
 
 #include "Helper.hpp"
 #include "AbstractTest.hpp"
@@ -21,7 +22,7 @@ namespace tsp_tests
 	using std::get;
 
 	template<typename NodeDistanceType>
-    struct NodeTests : public AbstractTest
+    struct NodeTests : AbstractTest
 	{
 		using NodeSpecialized = tsp::Node<NodeDistanceType>;
 
@@ -34,22 +35,30 @@ namespace tsp_tests
 	template <typename NodeDistanceType>
 	bool NodeTests<NodeDistanceType>::CreateNode()
 	{
-		NodeSpecialized node1("Node 1");
+		NodeSpecialized node1("Node 1", 
+			                  RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }), 
+							  RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }));
 		AssertThat(node1.Name() == "Node 1");
+		AssertThat(node1.X() >= NodeDistanceType{ 0 } && node1.X() <= NodeDistanceType{ 500 });
+		AssertThat(node1.Y() >= NodeDistanceType{ 0 } && node1.Y() <= NodeDistanceType{ 500 });
 
 		string name("Node 2");
-		NodeSpecialized node2(name);
+		NodeSpecialized node2(name,
+							  RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }),
+							  RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }));
 		AssertThat(node2.Name() == "Node 2");
 		AssertThat(node2.Name() == name);
+		AssertThat(node2.X() >= NodeDistanceType{ 0 } && node2.X() <= NodeDistanceType{ 500 });
+		AssertThat(node2.Y() >= NodeDistanceType{ 0 } && node2.Y() <= NodeDistanceType{ 500 });
 
-		auto name_ptr = make_unique<string>("Node 2");
-		NodeSpecialized node3(*name_ptr.get());
-		AssertThat(node3.Name() == "Node 2");
+		auto name_ptr = make_unique<string>("Node 3");
+		NodeSpecialized node3(*name_ptr.get(),
+							  RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }),
+						      RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 }));
+		AssertThat(node3.Name() == "Node 3");
 		AssertThat(node3.Name() == *name_ptr);
-
-		AssertThat(node1.NodesCount() == 0);
-		AssertThat(node2.NodesCount() == 0);
-		AssertThat(node3.NodesCount() == 0);
+		AssertThat(node3.X() >= NodeDistanceType{ 0 } && node3.X() <= NodeDistanceType{ 500 });
+		AssertThat(node3.Y() >= NodeDistanceType{ 0 } && node3.Y() <= NodeDistanceType{ 500 });
 
 		return HadPassed();
 	}
@@ -57,11 +66,17 @@ namespace tsp_tests
 	template <typename NodeDistanceType>
 	bool NodeTests<NodeDistanceType>::CompareNodes()
 	{
-		NodeSpecialized node1("Node 1");
+		auto x1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+		auto y1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+
+		auto x2 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+		auto y2 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+
+		NodeSpecialized node1("Node 1", x1, y1);
 		string name("Node 2");
-		NodeSpecialized node2(name);
+		NodeSpecialized node2(name, x2, y2);
 		auto name_ptr = make_unique<string>("Node 2");
-		NodeSpecialized node3(*name_ptr.get());
+		NodeSpecialized node3(*name_ptr.get(), x2, y2);
 
 		AssertThat(node1 != node2);
 		AssertThat(node2 != node1);
@@ -81,41 +96,21 @@ namespace tsp_tests
 	{
 		using NodePtr = shared_ptr<NodeSpecialized>;
 
-		list<NodePtr> nodes;
+		auto x1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+		auto y1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+
+		vector<NodePtr> nodes;
 		for (auto i = 0; i < 50; ++i)
-			nodes.emplace_back(make_shared<NodeSpecialized>("Node " + to_string(i)));
+			nodes.emplace_back(make_shared<NodeSpecialized>("Node " + to_string(i),
+							   x1,
+							   y1));
 
-		for (auto& node1: nodes)
-			for (auto& node2: nodes)
-				if (node1 != node2)
-					node1->AddNode(weak_ptr<NodeSpecialized>(node2), RandomValue(1, 500));
-
-		AssertThat(nodes.size() == 50);
-		for (auto& node : nodes)
+		for (auto i = 0; i < nodes.size(); ++i)
 		{
-			AssertThat(node->NodesCount() == 49);
-			for (const auto& node_tuple : node->LinkedNodes())
-			{
-				AssertThat(!get<0>(node_tuple).expired());
-				AssertThat(get<0>(node_tuple).lock() != node);
-				AssertThat(get<1>(node_tuple) >= 1 && get<1>(node_tuple) <= 500);
-			}
+			AssertThat(nodes[i]->Name() == "Node " + to_string(i));
+			AssertThat(nodes[i]->X() == x1);
+			AssertThat(nodes[i]->Y() == y1);
 		}
-
-        nodes.erase(nodes.begin());
-        for (auto& node : nodes)
-        {
-            node->ClearInvalidRefs();
-            AssertThat(node->NodesCount() == 48);
-            node->RemoveNode(get<0>(*node->LinkedNodes().begin()));
-            AssertThat(node->NodesCount() == 47);
-            for (const auto& node_tuple : node->LinkedNodes())
-            {
-                AssertThat(!get<0>(node_tuple).expired());
-                AssertThat(get<0>(node_tuple).lock() != node);
-                AssertThat(get<1>(node_tuple) >= 1 && get<1>(node_tuple) <= 500);
-            }
-        }
 
         return HadPassed();
 	}
@@ -125,15 +120,14 @@ namespace tsp_tests
 	{
         using NodePtr = shared_ptr<NodeSpecialized>;
 
-        list<NodePtr> nodes;
-        for (auto i = 0; i < 10; ++i)
-            nodes.emplace_back(make_shared<NodeSpecialized>("Node " + to_string(i)));
+		auto x1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
+		auto y1 = RandomValue(NodeDistanceType{ 0 }, NodeDistanceType{ 500 });
 
-        for (auto& node1 : nodes)
-            for (auto& node2 : nodes)
-                if (node1 != node2)
-                    node1->AddNode(weak_ptr<NodeSpecialized>(node2), RandomValue(1.f, 500.f));
-        AssertThat(nodes.size() == 10);
+		list<NodePtr> nodes;
+		for (auto i = 0; i < 50; ++i)
+			nodes.emplace_back(make_shared<NodeSpecialized>("Node " + to_string(i),
+				x1,
+				y1));
 
         stringstream s;
         for (auto node : nodes)
